@@ -1,0 +1,35 @@
+{
+  "name": "tft-smart-contracts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "npm run build",
+    "build": "truffle compile",
+    "test": "truffle test",
+    "deploy:development": "truffle migrate --network development",
+    "prebuild": "rimraf ./build/contracts/*",
+    "postinstall": "cpr .env.example .env"
+  },
+  "keywords": [],
+  "private": true,
+  "dependencies": {
+    "@openzeppelin/contracts": "^3.4.0",
+    "@openzeppelin/contracts-upgradeable": "^3.4.0",
+    "@truffle/contract": "^4.2.22",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "chai-bn": "^0.2.1",
+    "cpr": "^3.0.1",
+    "dotenv": "^8.2.0",
+    "rimraf": "^3.0.2",
+    "truffle": "^5.1.13",
+    "truffle-hdwallet-provider": "^1.0.17"
+  },
+  "devDependencies": {
+    "truffle-plugin-verify": "^0.5.4"
+  }
+}
