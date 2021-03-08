@@ -6,6 +6,7 @@ import '@openzeppelin/contracts/math/SafeMath.sol';
 import './libs/IBEP20.sol';
 import './libs/SafeBEP20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
+import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 import './TFTToken.sol';
 
@@ -16,7 +17,7 @@ import './TFTToken.sol';
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract MasterChef is Ownable {
+contract MasterChef is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeBEP20 for IBEP20;
 
@@ -69,6 +70,9 @@ contract MasterChef is Ownable {
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
+    event SetFeeAddress(address indexed user, address indexed newAddress);
+    event SetDevAddress(address indexed user, address indexed newAddress);
+    event UpdateEmissionRate(address indexed user, uint256 tftPerBlock);
 
     constructor(
         TFTToken _tft,
@@ -88,20 +92,26 @@ contract MasterChef is Ownable {
         return poolInfo.length;
     }
 
+    mapping(IBEP20 => bool) public poolExistence;
+    modifier nonDuplicated(IBEP20 _lpToken) {
+        require(poolExistence[_lpToken] == false, 'nonDuplicated: duplicated');
+        _;
+    }
+
     // Add a new lp to the pool. Can only be called by the owner.
-    // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
     function add(
         uint256 _allocPoint,
         IBEP20 _lpToken,
         uint16 _depositFeeBP,
         bool _withUpdate
-    ) public onlyOwner {
+    ) public onlyOwner nonDuplicated(_lpToken) {
         require(_depositFeeBP <= 10000, 'add: invalid deposit fee basis points');
         if (_withUpdate) {
             massUpdatePools();
         }
         uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
+        poolExistence[_lpToken] = true;
         poolInfo.push(PoolInfo({lpToken: _lpToken, allocPoint: _allocPoint, lastRewardBlock: lastRewardBlock, accTftPerShare: 0, depositFeeBP: _depositFeeBP}));
     }
 
@@ -168,7 +178,7 @@ contract MasterChef is Ownable {
     }
 
     // Deposit LP tokens to MasterChef for TFT allocation.
-    function deposit(uint256 _pid, uint256 _amount) public {
+    function deposit(uint256 _pid, uint256 _amount) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
@@ -193,7 +203,7 @@ contract MasterChef is Ownable {
     }
 
     // Withdraw LP tokens from MasterChef.
-    function withdraw(uint256 _pid, uint256 _amount) public {
+    function withdraw(uint256 _pid, uint256 _amount) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, 'withdraw: not good');
@@ -211,7 +221,7 @@ contract MasterChef is Ownable {
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
-    function emergencyWithdraw(uint256 _pid) public {
+    function emergencyWithdraw(uint256 _pid) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         uint256 amount = user.amount;
@@ -224,11 +234,13 @@ contract MasterChef is Ownable {
     // Safe tft transfer function, just in case if rounding error causes pool to not have enough TFTs.
     function safeTftTransfer(address _to, uint256 _amount) internal {
         uint256 tftBal = tft.balanceOf(address(this));
+        bool transferSuccess = false;
         if (_amount > tftBal) {
-            tft.transfer(_to, tftBal);
+            transferSuccess = tft.transfer(_to, tftBal);
         } else {
-            tft.transfer(_to, _amount);
+            transferSuccess = tft.transfer(_to, _amount);
         }
+        require(transferSuccess, 'safeTftTransfer: transfer failed');
     }
 
     // Update dev address by the previous dev.
@@ -246,5 +258,6 @@ contract MasterChef is Ownable {
     function updateEmissionRate(uint256 _tftPerBlock) public onlyOwner {
         massUpdatePools();
         tftPerBlock = _tftPerBlock;
+        emit UpdateEmissionRate(msg.sender, _tftPerBlock);
     }
 }
