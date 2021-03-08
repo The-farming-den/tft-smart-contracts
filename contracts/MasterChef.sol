@@ -56,7 +56,11 @@ contract MasterChef is Ownable, ReentrancyGuard {
     // Bonus muliplier for early tft makers.
     uint256 public constant BONUS_MULTIPLIER = 1;
     // Deposit Fee address
-    address public feeAddress;
+    address public depositFeeAddress;
+    // Harvest Fee address
+    address public harvestFeeAddress;
+    // Harvest Fee
+    uint256 public constant HARVEST_FEE = 3; // harvest fee (3%)
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
@@ -70,20 +74,20 @@ contract MasterChef is Ownable, ReentrancyGuard {
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
-    event SetFeeAddress(address indexed user, address indexed newAddress);
-    event SetDevAddress(address indexed user, address indexed newAddress);
     event UpdateEmissionRate(address indexed user, uint256 tftPerBlock);
 
     constructor(
         TFTToken _tft,
         address _devaddr,
-        address _feeAddress,
+        address _depositFeeAddress,
+        address _harvestFeeAddress,
         uint256 _tftPerBlock,
         uint256 _startBlock
     ) public {
         tft = _tft;
         devaddr = _devaddr;
-        feeAddress = _feeAddress;
+        depositFeeAddress = _depositFeeAddress;
+        harvestFeeAddress = _harvestFeeAddress;
         tftPerBlock = _tftPerBlock;
         startBlock = _startBlock;
     }
@@ -192,7 +196,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
             pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
             if (pool.depositFeeBP > 0) {
                 uint256 depositFee = _amount.mul(pool.depositFeeBP).div(10000);
-                pool.lpToken.safeTransfer(feeAddress, depositFee);
+                pool.lpToken.safeTransfer(depositFeeAddress, depositFee);
                 user.amount = user.amount.add(_amount).sub(depositFee);
             } else {
                 user.amount = user.amount.add(_amount);
@@ -210,7 +214,11 @@ contract MasterChef is Ownable, ReentrancyGuard {
         updatePool(_pid);
         uint256 pending = user.amount.mul(pool.accTftPerShare).div(1e12).sub(user.rewardDebt);
         if (pending > 0) {
-            safeTftTransfer(msg.sender, pending);
+            uint256 tokensAsFee = pending.mul(HARVEST_FEE).div(100);
+            uint256 tokensToTransfer = pending.sub(tokensAsFee);
+
+            safeTftTransfer(harvestFeeAddress, tokensAsFee);
+            safeTftTransfer(msg.sender, tokensToTransfer);
         }
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
@@ -249,9 +257,14 @@ contract MasterChef is Ownable, ReentrancyGuard {
         devaddr = _devaddr;
     }
 
-    function setFeeAddress(address _feeAddress) public {
-        require(msg.sender == feeAddress, 'setFeeAddress: FORBIDDEN');
-        feeAddress = _feeAddress;
+    function setDepositFeeAddress(address _depositFeeAddress) public {
+        require(msg.sender == depositFeeAddress, 'setDepositFeeAddress: FORBIDDEN');
+        depositFeeAddress = _depositFeeAddress;
+    }
+
+    function setHarvestFeeAddress(address _harvestFeeAddress) public {
+        require(msg.sender == harvestFeeAddress, 'setHarvestFeeAddress: FORBIDDEN');
+        harvestFeeAddress = _harvestFeeAddress;
     }
 
     //Pancake has to add hidden dummy pools inorder to alter the emission, here we make it simple and transparent to all.
