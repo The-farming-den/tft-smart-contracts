@@ -189,7 +189,11 @@ contract MasterChef is Ownable, ReentrancyGuard {
         if (user.amount > 0) {
             uint256 pending = user.amount.mul(pool.accTftPerShare).div(1e12).sub(user.rewardDebt);
             if (pending > 0) {
-                safeTftTransfer(msg.sender, pending);
+                uint256 tokensAsFee = pending.mul(HARVEST_FEE).div(100);
+                uint256 tokensToTransfer = pending.sub(tokensAsFee);
+
+                safeTftTransfer(harvestFeeAddress, tokensAsFee);
+                safeTftTransfer(msg.sender, tokensToTransfer);
             }
         }
         if (_amount > 0) {
