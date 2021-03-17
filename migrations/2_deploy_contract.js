@@ -1,4 +1,5 @@
 const TFTToken = artifacts.require("./TFTToken.sol")
+const TimeLock = artifacts.require("./TimeLock.sol")
 const MasterChef = artifacts.require("./MasterChef.sol")
 
 module.exports = async function (deployer, network, accounts) {
@@ -20,7 +21,9 @@ module.exports = async function (deployer, network, accounts) {
   console.log('_tftPerBlock: ', _tftPerBlock);
   console.log('_startBlock: ', _startBlock);
 
-  deployer.deploy(TFTToken).then(function () {
-    return deployer.deploy(MasterChef, TFTToken.address, _devaddr, _depositFeeAddress, _harvestFeeAddress, _tftPerBlock, _startBlock)
-  })
+  await deployer.deploy(TFTToken)
+
+  console.log('TFTToken Address: ', TFTToken.address);
+  await deployer.deploy(TimeLock, TFTToken.address)
+  await deployer.deploy(MasterChef, TFTToken.address, _devaddr, _depositFeeAddress, _harvestFeeAddress, _tftPerBlock, _startBlock)
 }
