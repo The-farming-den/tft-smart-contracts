@@ -9,13 +9,11 @@ module.exports = async function (deployer, network, accounts) {
    * deployer.deploy(TFTToken)
    */
 
-  const _devaddr = process.env.DEV_ADDR;
   const _depositFeeAddress = process.env.DEPOSIT_FEE_ADDR;
   const _harvestFeeAddress = process.env.HARVEST_FEE_ADDR;
   const _tftPerBlock = process.env.TFT_PER_BLOCK;
   const _startBlock = process.env.START_BLOCK;
 
-  console.log('_devaddr: ', _devaddr);
   console.log('_depositFeeAddress: ', _depositFeeAddress);
   console.log('_harvestFeeAddress: ', _harvestFeeAddress);
   console.log('_tftPerBlock: ', _tftPerBlock);
@@ -25,5 +23,5 @@ module.exports = async function (deployer, network, accounts) {
 
   console.log('TFTToken Address: ', TFTToken.address);
   await deployer.deploy(TimeLock, TFTToken.address)
-  await deployer.deploy(MasterChef, TFTToken.address, _devaddr, _depositFeeAddress, _harvestFeeAddress, _tftPerBlock, _startBlock)
+  await deployer.deploy(MasterChef, TFTToken.address, _depositFeeAddress, _harvestFeeAddress, _tftPerBlock, _startBlock)
 }

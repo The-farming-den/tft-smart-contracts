@@ -49,8 +49,6 @@ contract MasterChef is Ownable, ReentrancyGuard {
 
     // The Farming Token!
     TFTToken public tft;
-    // Dev address.
-    address public devaddr;
     // TFT tokens created per block.
     uint256 public tftPerBlock;
     // Bonus muliplier for early tft makers.
@@ -78,14 +76,12 @@ contract MasterChef is Ownable, ReentrancyGuard {
 
     constructor(
         TFTToken _tft,
-        address _devaddr,
         address _depositFeeAddress,
         address _harvestFeeAddress,
         uint256 _tftPerBlock,
         uint256 _startBlock
     ) public {
         tft = _tft;
-        devaddr = _devaddr;
         depositFeeAddress = _depositFeeAddress;
         harvestFeeAddress = _harvestFeeAddress;
         tftPerBlock = _tftPerBlock;
@@ -175,7 +171,6 @@ contract MasterChef is Ownable, ReentrancyGuard {
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
         uint256 tftReward = multiplier.mul(tftPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-        tft.mint(devaddr, tftReward.div(10));
         tft.mint(address(this), tftReward);
         pool.accTftPerShare = pool.accTftPerShare.add(tftReward.mul(1e12).div(lpSupply));
         pool.lastRewardBlock = block.number;
@@ -253,12 +248,6 @@ contract MasterChef is Ownable, ReentrancyGuard {
             transferSuccess = tft.transfer(_to, _amount);
         }
         require(transferSuccess, 'safeTftTransfer: transfer failed');
-    }
-
-    // Update dev address by the previous dev.
-    function dev(address _devaddr) public {
-        require(msg.sender == devaddr, 'dev: wut?');
-        devaddr = _devaddr;
     }
 
     function setDepositFeeAddress(address _depositFeeAddress) public {
